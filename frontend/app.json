@@ -1,8 +1,6 @@
 {
   "expo": {
     "name": "KhushiBites",
-    "displayName": "KhushiBites — Happy Meals, Fast Delivery",
-    "sdkVersion": "52.0.0",
     "version": "1.0.0",
     "platforms": [
       "android",
@@ -10,17 +8,14 @@
       "web"
     ],
     "android": {
-      "package": "com.anonymous.khushibites"
+      "package": "com.anonymous.khushibites",
+      "versionCode": 8
     },
     "extra": {
       "eas": {
         "projectId": "3e015f4f-a147-447d-ae80-e4deaff4de77"
       }
     }
-  },
-  "extra": {
-    "eas": {
-      "projectId": "3e015f4f-a147-447d-ae80-e4deaff4de77"
-    }
   }
+}
 }
