@@ -1,0 +1,20 @@
+{
+  "cli": {
+    "version": ">= 2.0.0"
+  },
+  "build": {
+    "production": {
+      "android": {
+        "image": "sdk-55",
+        "buildType": "app-bundle",
+        "gradleCommand": ":app:bundleRelease --stacktrace --info"
+      }
+    },
+    "development": {
+      "developmentClient": true,
+      "android": {
+        "buildType": "apk"
+      }
+    }
+  }
+}
