@@ -1,4 +1,9 @@
 pluginManagement {
+  repositories {
+    mavenCentral()
+    google()
+    gradlePluginPortal()
+  }
   def reactNativeGradlePlugin = null
   try {
     def resolved = providers.exec {
