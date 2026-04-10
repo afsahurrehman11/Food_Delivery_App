@@ -4,32 +4,49 @@ pluginManagement {
     google()
     gradlePluginPortal()
   }
-  def reactNativeGradlePlugin = null
-  try {
-    def resolved = providers.exec {
-      workingDir(rootDir)
-      commandLine("node", "--print", "require.resolve('@react-native/gradle-plugin/package.json', { paths: [require.resolve('react-native/package.json')] })")
-    }.standardOutput.asText.get().trim()
-    println("DEBUG: require.resolve('@react-native/gradle-plugin') -> ${resolved}")
-    reactNativeGradlePlugin = new File(resolved).getParentFile().absolutePath
-    println("DEBUG: reactNativeGradlePlugin -> ${reactNativeGradlePlugin}")
-    includeBuild(reactNativeGradlePlugin)
-  } catch (Exception e) {
-    println("DEBUG: react-native gradle plugin resolution failed: ${e.toString()}")
-  }
+}
 
-  def expoPluginsPath = null
+// Resolve and include local plugin builds (outside pluginManagement so they
+// register in the settings lifecycle before project evaluation).
+def reactNativeGradlePlugin = null
+try {
+  def resolved = providers.exec {
+    workingDir(rootDir)
+    commandLine("node", "--print", "require.resolve('@react-native/gradle-plugin/package.json', { paths: [require.resolve('react-native/package.json')] })")
+  }.standardOutput.asText.get().trim()
+  println("DEBUG: require.resolve('@react-native/gradle-plugin') -> ${resolved}")
+  reactNativeGradlePlugin = new File(resolved).getParentFile().absolutePath
+  println("DEBUG: reactNativeGradlePlugin -> ${reactNativeGradlePlugin}")
+} catch (Exception e) {
+  println("DEBUG: react-native gradle plugin resolution failed: ${e.toString()}")
+}
+if (reactNativeGradlePlugin != null) {
   try {
-    def resolvedExpo = providers.exec {
-      workingDir(rootDir)
-      commandLine("node", "--print", "require.resolve('expo-modules-autolinking/package.json', { paths: [require.resolve('expo/package.json')] })")
-    }.standardOutput.asText.get().trim()
-    println("DEBUG: require.resolve('expo-modules-autolinking') -> ${resolvedExpo}")
-    expoPluginsPath = new File(resolvedExpo, "../android/expo-gradle-plugin").absolutePath
-    println("DEBUG: expoPluginsPath -> ${expoPluginsPath}")
-    includeBuild(expoPluginsPath)
+    includeBuild(reactNativeGradlePlugin)
+    println("DEBUG: included react-native gradle plugin build: ${reactNativeGradlePlugin}")
   } catch (Exception e) {
-    println("DEBUG: expo-modules-autolinking resolution failed: ${e.toString()}")
+    println("DEBUG: failed to include react-native gradle plugin build: ${e.toString()}")
+  }
+}
+
+def expoPluginsPath = null
+try {
+  def resolvedExpo = providers.exec {
+    workingDir(rootDir)
+    commandLine("node", "--print", "require.resolve('expo-modules-autolinking/package.json', { paths: [require.resolve('expo/package.json')] })")
+  }.standardOutput.asText.get().trim()
+  println("DEBUG: require.resolve('expo-modules-autolinking') -> ${resolvedExpo}")
+  expoPluginsPath = new File(resolvedExpo, "../android/expo-gradle-plugin").absolutePath
+  println("DEBUG: expoPluginsPath -> ${expoPluginsPath}")
+} catch (Exception e) {
+  println("DEBUG: expo-modules-autolinking resolution failed: ${e.toString()}")
+}
+if (expoPluginsPath != null) {
+  try {
+    includeBuild(expoPluginsPath)
+    println("DEBUG: included expo gradle plugin build: ${expoPluginsPath}")
+  } catch (Exception e) {
+    println("DEBUG: failed to include expo gradle plugin build: ${e.toString()}")
   }
 }
 

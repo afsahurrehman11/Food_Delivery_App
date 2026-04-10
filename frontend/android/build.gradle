@@ -1,0 +1,37 @@
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+
+buildscript {
+  repositories {
+    google()
+    mavenCentral()
+  }
+  dependencies {
+    // Fallback explicit versions so the EAS builder can resolve classpath artifacts.
+    // These are safe, reversible defaults that work with Gradle 8.x on the builder.
+    classpath('com.android.tools.build:gradle:8.1.1')
+    classpath('org.jetbrains.kotlin:kotlin-gradle-plugin:1.8.22')
+    // `react-native-gradle-plugin` is provided by the local @react-native/gradle-plugin
+    // includeBuild in `settings.gradle`; avoid forcing a remote artifact here.
+  }
+}
+
+allprojects {
+  repositories {
+    google()
+    mavenCentral()
+    maven { url 'https://www.jitpack.io' }
+  }
+}
+
+try {
+  apply plugin: "expo-root-project"
+  println("DEBUG: applied expo-root-project")
+} catch (Exception e) {
+  println("DEBUG: expo-root-project not available: ${e.toString()}")
+}
+try {
+  apply plugin: "com.facebook.react.rootproject"
+  println("DEBUG: applied com.facebook.react.rootproject")
+} catch (Exception e) {
+  println("DEBUG: com.facebook.react.rootproject not available: ${e.toString()}")
+}
