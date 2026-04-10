@@ -70,13 +70,9 @@ if (expoPluginsPath != null) {
   }
 }
 
-// Try to apply settings plugins, but fall back gracefully if they are not resolvable
-try {
-  pluginManager.apply("com.facebook.react.settings")
-  println("DEBUG: applied com.facebook.react.settings")
-} catch (Exception e) {
-  println("DEBUG: could not apply com.facebook.react.settings: ${e.toString()}")
-}
+// Apply the Expo autolinking settings plugin.
+// React Native 0.73 uses the RN Gradle plugin package without a separate
+// com.facebook.react.settings settings plugin ID.
 try {
   pluginManager.apply("expo-autolinking-settings")
   println("DEBUG: applied expo-autolinking-settings")
