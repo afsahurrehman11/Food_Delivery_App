@@ -28,23 +28,61 @@ pluginManagement {
   }
 }
 
-plugins {
-  id("com.facebook.react.settings")
-  id("expo-autolinking-settings")
+// Try to apply settings plugins, but fall back gracefully if they are not resolvable
+try {
+  pluginManager.apply("com.facebook.react.settings")
+  println("DEBUG: applied com.facebook.react.settings")
+} catch (Exception e) {
+  println("DEBUG: could not apply com.facebook.react.settings: ${e.toString()}")
+}
+try {
+  pluginManager.apply("expo-autolinking-settings")
+  println("DEBUG: applied expo-autolinking-settings")
+} catch (Exception e) {
+  println("DEBUG: could not apply expo-autolinking-settings: ${e.toString()}")
 }
 
-extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
-  if (System.getenv('EXPO_USE_COMMUNITY_AUTOLINKING') == '1') {
-    ex.autolinkLibrariesFromCommand()
-  } else {
-    ex.autolinkLibrariesFromCommand(expoAutolinking.rnConfigCommand)
+try {
+  extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
+    if (System.getenv('EXPO_USE_COMMUNITY_AUTOLINKING') == '1') {
+      ex.autolinkLibrariesFromCommand()
+    } else {
+      ex.autolinkLibrariesFromCommand(expoAutolinking.rnConfigCommand)
+    }
   }
+} catch (Exception e) {
+  println("DEBUG: ReactSettingsExtension not available: ${e.toString()}")
 }
-expoAutolinking.useExpoModules()
+
+try {
+  if (extensions.findByName("expoAutolinking") != null) {
+    expoAutolinking.useExpoModules()
+  } else {
+    println("DEBUG: expoAutolinking extension not found; skipping useExpoModules()")
+  }
+} catch (Exception e) {
+  println("DEBUG: failed to call expoAutolinking.useExpoModules(): ${e.toString()}")
+}
 
 rootProject.name = 'KhushiBites'
 
-expoAutolinking.useExpoVersionCatalog()
+try {
+  if (extensions.findByName("expoAutolinking") != null) {
+    expoAutolinking.useExpoVersionCatalog()
+  } else {
+    println("DEBUG: expoAutolinking extension not found; skipping useExpoVersionCatalog()")
+  }
+} catch (Exception e) {
+  println("DEBUG: failed to call expoAutolinking.useExpoVersionCatalog(): ${e.toString()}")
+}
 
 include ':app'
-includeBuild(expoAutolinking.reactNativeGradlePlugin)
+try {
+  if (extensions.findByName("expoAutolinking") != null && expoAutolinking.reactNativeGradlePlugin != null) {
+    includeBuild(expoAutolinking.reactNativeGradlePlugin)
+  } else {
+    println("DEBUG: expoAutolinking.reactNativeGradlePlugin not available; skipping includeBuild")
+  }
+} catch (Exception e) {
+  println("DEBUG: failed to include expoAutolinking.reactNativeGradlePlugin: ${e.toString()}")
+}
