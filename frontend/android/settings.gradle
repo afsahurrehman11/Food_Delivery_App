@@ -1,11 +1,3 @@
-pluginManagement {
-  repositories {
-    mavenCentral()
-    google()
-    gradlePluginPortal()
-  }
-}
-
 // Resolve and include local plugin builds (outside pluginManagement so they
 // register in the settings lifecycle before project evaluation).
 def reactNativeGradlePlugin = null
@@ -20,14 +12,6 @@ try {
 } catch (Exception e) {
   println("DEBUG: react-native gradle plugin resolution failed: ${e.toString()}")
 }
-if (reactNativeGradlePlugin != null) {
-  try {
-    includeBuild(reactNativeGradlePlugin)
-    println("DEBUG: included react-native gradle plugin build: ${reactNativeGradlePlugin}")
-  } catch (Exception e) {
-    println("DEBUG: failed to include react-native gradle plugin build: ${e.toString()}")
-  }
-}
 
 def expoPluginsPath = null
 try {
@@ -41,6 +25,42 @@ try {
 } catch (Exception e) {
   println("DEBUG: expo-modules-autolinking resolution failed: ${e.toString()}")
 }
+
+pluginManagement {
+  repositories {
+    mavenCentral()
+    google()
+    gradlePluginPortal()
+  }
+
+  if (reactNativeGradlePlugin != null) {
+    try {
+      includeBuild(reactNativeGradlePlugin)
+      println("DEBUG: pluginManagement included react-native gradle plugin build: ${reactNativeGradlePlugin}")
+    } catch (Exception e) {
+      println("DEBUG: pluginManagement failed to include react-native gradle plugin build: ${e.toString()}")
+    }
+  }
+
+  if (expoPluginsPath != null) {
+    try {
+      includeBuild(expoPluginsPath)
+      println("DEBUG: pluginManagement included expo gradle plugin build: ${expoPluginsPath}")
+    } catch (Exception e) {
+      println("DEBUG: pluginManagement failed to include expo gradle plugin build: ${e.toString()}")
+    }
+  }
+}
+
+if (reactNativeGradlePlugin != null) {
+  try {
+    includeBuild(reactNativeGradlePlugin)
+    println("DEBUG: included react-native gradle plugin build: ${reactNativeGradlePlugin}")
+  } catch (Exception e) {
+    println("DEBUG: failed to include react-native gradle plugin build: ${e.toString()}")
+  }
+}
+
 if (expoPluginsPath != null) {
   try {
     includeBuild(expoPluginsPath)
