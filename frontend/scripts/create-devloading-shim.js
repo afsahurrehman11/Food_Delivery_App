@@ -66,6 +66,24 @@ try {
   console.error('Failed while disabling expo gradle plugin directory:', error);
 }
 
+// Ensure a minimal placeholder exists at the original expo gradle plugin path
+// so Gradle's includeBuild validation does not fail when the real plugin
+// directory has been renamed/removed by this shim.
+try {
+  const placeholderDir = path.join(__dirname, '..', 'node_modules', 'expo-modules-autolinking', 'android', 'expo-gradle-plugin');
+  if (!fs.existsSync(placeholderDir)) {
+    fs.mkdirSync(placeholderDir, { recursive: true });
+    const settingsContent = "rootProject.name = 'expo-gradle-plugin-placeholder'\n";
+    fs.writeFileSync(path.join(placeholderDir, 'settings.gradle'), settingsContent, 'utf8');
+    fs.writeFileSync(path.join(placeholderDir, 'build.gradle'), '// placeholder to satisfy includedBuild\n', 'utf8');
+    console.log('Created expo gradle plugin placeholder at', placeholderDir);
+  } else {
+    console.log('Expo gradle plugin directory already present, no placeholder needed:', placeholderDir);
+  }
+} catch (error) {
+  console.error('Failed to create expo gradle plugin placeholder:', error);
+}
+
 try {
   const androidDir = path.join(__dirname, '..', 'android');
   const candidates = [
