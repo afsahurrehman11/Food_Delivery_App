@@ -4,6 +4,9 @@
   },
   "build": {
     "production": {
+      "env": {
+        "EXPO_USE_COMMUNITY_AUTOLINKING": "1"
+      },
       "android": {
         "image": "sdk-55",
         "buildType": "app-bundle",
