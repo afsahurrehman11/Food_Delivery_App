@@ -30,7 +30,7 @@ function replaceLegacyReactSettingsBlock(settingsText) {
         '  extensions.configure(reactSettingsClass) { ex ->',
         "    if (System.getenv('EXPO_USE_COMMUNITY_AUTOLINKING') == '1') {",
         '      ex.autolinkLibrariesFromCommand()',
-        '    } else if (extensions.findByName("expoAutolinking") != null && expoAutolinking?.rnConfigCommand != null) {',
+        "    } else if (extensions.findByName('expoAutolinking') != null && expoAutolinking?.rnConfigCommand != null) {",
         '      ex.autolinkLibrariesFromCommand(expoAutolinking.rnConfigCommand)',
         '    } else {',
         '      ex.autolinkLibrariesFromCommand()',
@@ -57,28 +57,29 @@ function rewriteExpoAutolinkingReferences(settingsText) {
   let text = settingsText;
   let changed = false;
 
-  if (text.includes('expoAutolinking?.')) {
-    text = text.replace(/expoAutolinking\?\./g, '__expoAutolinkingExt?.');
+  // Remove previously injected helper block if present. That block can break
+  // Gradle because pluginManagement {} must be at the top of settings.gradle.
+  const helperBlockRegex = /def __expoAutolinkingExt = null\r?\ntry \{\r?\n\s*__expoAutolinkingExt = extensions\.findByName\("expoAutolinking"\)\r?\n\} catch \(Exception ignored\) \{\r?\n\s*__expoAutolinkingExt = null\r?\n\}\r?\n?/;
+  if (helperBlockRegex.test(text)) {
+    text = text.replace(helperBlockRegex, '');
     changed = true;
   }
 
-  if (text.includes('expoAutolinking.')) {
-    text = text.replace(/expoAutolinking\./g, '__expoAutolinkingExt?.');
-    changed = true;
-  }
+  const replacements = [
+    ['extensions.findByName("expoAutolinking")', "extensions.findByName('expoAutolinking')"],
+    ["__expoAutolinkingExt?.", "extensions.findByName('expoAutolinking')?."],
+    ["expoAutolinking?.rnConfigCommand", "extensions.findByName('expoAutolinking')?.rnConfigCommand"],
+    ["expoAutolinking.rnConfigCommand", "extensions.findByName('expoAutolinking')?.rnConfigCommand"],
+    ["expoAutolinking.useExpoModules()", "extensions.findByName('expoAutolinking')?.useExpoModules()"],
+    ["expoAutolinking.useExpoVersionCatalog()", "extensions.findByName('expoAutolinking')?.useExpoVersionCatalog()"],
+    ["expoAutolinking.reactNativeGradlePlugin", "extensions.findByName('expoAutolinking')?.reactNativeGradlePlugin"]
+  ];
 
-  if (changed && !text.includes('def __expoAutolinkingExt = null')) {
-    const helperBlock = [
-      'def __expoAutolinkingExt = null',
-      'try {',
-      '  __expoAutolinkingExt = extensions.findByName("expoAutolinking")',
-      '} catch (Exception ignored) {',
-      '  __expoAutolinkingExt = null',
-      '}',
-      ''
-    ].join('\n');
-
-    text = helperBlock + text;
+  for (const [from, to] of replacements) {
+    if (text.includes(from)) {
+      text = text.split(from).join(to);
+      changed = true;
+    }
   }
 
   return {
