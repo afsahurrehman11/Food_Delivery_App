@@ -284,6 +284,14 @@ try {
 
     const replacements = [
       [
+        /^(\s*)apply plugin:\s*['"]expo-root-project['"]\s*$/gm,
+        "$1try {\n$1  project.pluginManager.apply('expo-root-project')\n$1} catch (Exception e) {\n$1  println('DEBUG: expo-root-project not available: ' + e.toString())\n$1}"
+      ],
+      [
+        /^(\s*)apply plugin:\s*['"]com\.facebook\.react\.rootproject['"]\s*$/gm,
+        "$1try {\n$1  project.pluginManager.apply('com.facebook.react.rootproject')\n$1} catch (Exception e) {\n$1  println('DEBUG: com.facebook.react.rootproject not available: ' + e.toString())\n$1}"
+      ],
+      [
         /classpath\s*\(\s*(['"])com\.android\.tools\.build:gradle\1\s*\)/g,
         "classpath('com.android.tools.build:gradle:8.1.1')"
       ],
