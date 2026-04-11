@@ -2,26 +2,26 @@
 // register in the settings lifecycle before project evaluation).
 def reactNativeGradlePlugin = null
 try {
-  def resolved = providers.exec {
-    workingDir(rootDir)
-    commandLine("node", "--print", "require.resolve('@react-native/gradle-plugin/package.json', { paths: [require.resolve('react-native/package.json')] })")
-  }.standardOutput.asText.get().trim()
-  println("DEBUG: require.resolve('@react-native/gradle-plugin') -> ${resolved}")
-  reactNativeGradlePlugin = new File(resolved).getParentFile().absolutePath
-  println("DEBUG: reactNativeGradlePlugin -> ${reactNativeGradlePlugin}")
+  def rnPkg = new File(rootDir, 'node_modules/@react-native/gradle-plugin/package.json')
+  if (rnPkg.exists()) {
+    reactNativeGradlePlugin = rnPkg.getParentFile().absolutePath
+    println("DEBUG: found @react-native/gradle-plugin at ${reactNativeGradlePlugin}")
+  } else {
+    println("DEBUG: @react-native/gradle-plugin not found at ${rnPkg}")
+  }
 } catch (Exception e) {
   println("DEBUG: react-native gradle plugin resolution failed: ${e.toString()}")
 }
 
 def expoPluginsPath = null
 try {
-  def resolvedExpo = providers.exec {
-    workingDir(rootDir)
-    commandLine("node", "--print", "require.resolve('expo-modules-autolinking/package.json', { paths: [require.resolve('expo/package.json')] })")
-  }.standardOutput.asText.get().trim()
-  println("DEBUG: require.resolve('expo-modules-autolinking') -> ${resolvedExpo}")
-  expoPluginsPath = new File(resolvedExpo, "../android/expo-gradle-plugin").absolutePath
-  println("DEBUG: expoPluginsPath -> ${expoPluginsPath}")
+  def expoPkg = new File(rootDir, 'node_modules/expo-modules-autolinking/package.json')
+  if (expoPkg.exists()) {
+    expoPluginsPath = new File(expoPkg.getParentFile(), 'android/expo-gradle-plugin').absolutePath
+    println("DEBUG: found expo-modules-autolinking at ${expoPkg}; expoPluginsPath -> ${expoPluginsPath}")
+  } else {
+    println("DEBUG: expo-modules-autolinking not found at ${expoPkg}")
+  }
 } catch (Exception e) {
   println("DEBUG: expo-modules-autolinking resolution failed: ${e.toString()}")
 }
