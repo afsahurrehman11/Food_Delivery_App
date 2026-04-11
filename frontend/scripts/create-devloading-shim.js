@@ -66,17 +66,66 @@ try {
   console.error('Failed while disabling expo gradle plugin directory:', error);
 }
 
-// Ensure a minimal placeholder exists at the original expo gradle plugin path
-// so Gradle's includeBuild validation does not fail when the real plugin
-// directory has been renamed/removed by this shim.
+// Ensure a minimal, well-formed Gradle plugin project exists at the
+// original expo gradle plugin path so `includeBuild` and plugin
+// resolution succeed during settings evaluation. This creates a tiny
+// Java-based Gradle plugin that registers the id `expo-autolinking-settings`.
 try {
   const placeholderDir = path.join(__dirname, '..', 'node_modules', 'expo-modules-autolinking', 'android', 'expo-gradle-plugin');
   if (!fs.existsSync(placeholderDir)) {
     fs.mkdirSync(placeholderDir, { recursive: true });
-    const settingsContent = "rootProject.name = 'expo-gradle-plugin-placeholder'\n";
+
+    // settings.gradle
+    const settingsContent = "rootProject.name = 'expo-gradle-plugin'\n";
     fs.writeFileSync(path.join(placeholderDir, 'settings.gradle'), settingsContent, 'utf8');
-    fs.writeFileSync(path.join(placeholderDir, 'build.gradle'), '// placeholder to satisfy includedBuild\n', 'utf8');
-    console.log('Created expo gradle plugin placeholder at', placeholderDir);
+
+    // build.gradle - minimal Java Gradle plugin that registers the expected plugin id
+    const buildGradleContent = `plugins {
+  id 'java-gradle-plugin'
+  id 'java'
+}
+
+group = 'dev.expo'
+version = '0.0.1'
+
+gradlePlugin {
+  plugins {
+    expoAutolinkingSettings {
+      id = 'expo-autolinking-settings'
+      implementationClass = 'com.expo.autolinking.ExpoAutolinkingSettingsNoop'
+    }
+  }
+}
+
+repositories {
+  mavenCentral()
+  google()
+}
+
+dependencies {
+  implementation gradleApi()
+}
+`;
+    fs.writeFileSync(path.join(placeholderDir, 'build.gradle'), buildGradleContent, 'utf8');
+
+    // Java no-op plugin implementation
+    const javaDir = path.join(placeholderDir, 'src', 'main', 'java', 'com', 'expo', 'autolinking');
+    fs.mkdirSync(javaDir, { recursive: true });
+    const javaContent = `package com.expo.autolinking;
+
+import org.gradle.api.Plugin;
+import org.gradle.api.Project;
+
+public class ExpoAutolinkingSettingsNoop implements Plugin<Project> {
+  @Override
+  public void apply(Project project) {
+    // no-op plugin to satisfy plugin resolution during settings evaluation
+  }
+}
+`;
+    fs.writeFileSync(path.join(javaDir, 'ExpoAutolinkingSettingsNoop.java'), javaContent, 'utf8');
+
+    console.log('Created expo gradle plugin placeholder with noop plugin at', placeholderDir);
   } else {
     console.log('Expo gradle plugin directory already present, no placeholder needed:', placeholderDir);
   }
