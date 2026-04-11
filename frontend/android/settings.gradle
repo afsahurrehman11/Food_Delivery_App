@@ -77,24 +77,11 @@ if (System.getenv('EXPO_SKIP_AUTOLINKING_INCLUDES') != '1' && expoPluginsPath !=
   println("DEBUG: skipping includeBuild for expo gradle plugin (path=${expoPluginsPath}, skipEnv=${System.getenv('EXPO_SKIP_AUTOLINKING_INCLUDES')})")
 }
 
-// Apply the Expo autolinking settings plugin only if the expo gradle plugin
-// folder is present. When the postinstall shim disables that folder (to
-// avoid compiling the Kotlin plugin on the builder), skip applying the
-// plugin so Gradle won't try to resolve a non-existent included build.
-try {
-  if (expoPluginsPath != null && new File(expoPluginsPath).exists()) {
-    try {
-      pluginManager.apply("expo-autolinking-settings")
-      println("DEBUG: applied expo-autolinking-settings")
-    } catch (Exception e) {
-      println("DEBUG: could not apply expo-autolinking-settings: ${e.toString()}")
-    }
-  } else {
-    println("DEBUG: skipping apply of expo-autolinking-settings; expo plugin folder missing: ${expoPluginsPath}")
-  }
-} catch (Exception e) {
-  println("DEBUG: error while deciding to apply expo-autolinking-settings: ${e.toString()}")
-}
+// Skip applying the `expo-autolinking-settings` plugin here to avoid
+// triggering Gradle plugin resolution for that id during settings
+// evaluation. Autolinking integration is handled later if the
+// `expoAutolinking` extension is available.
+println("DEBUG: expo-autolinking-settings application disabled by settings.gradle (noop)")
 
 try {
   extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
