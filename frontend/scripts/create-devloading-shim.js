@@ -114,12 +114,12 @@ dependencies {
     const javaContent = `package com.expo.autolinking;
 
 import org.gradle.api.Plugin;
-import org.gradle.api.Project;
+import org.gradle.api.initialization.Settings;
 
-public class ExpoAutolinkingSettingsNoop implements Plugin<Project> {
+public class ExpoAutolinkingSettingsNoop implements Plugin<Settings> {
   @Override
-  public void apply(Project project) {
-    // no-op plugin to satisfy plugin resolution during settings evaluation
+  public void apply(Settings settings) {
+    // no-op settings plugin to satisfy plugin resolution during settings evaluation
   }
 }
 `;
