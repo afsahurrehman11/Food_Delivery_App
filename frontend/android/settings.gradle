@@ -42,13 +42,15 @@ pluginManagement {
     }
   }
 
-  if (expoPluginsPath != null) {
+  if (expoPluginsPath != null && new File(expoPluginsPath).exists()) {
     try {
       includeBuild(expoPluginsPath)
       println("DEBUG: pluginManagement included expo gradle plugin build: ${expoPluginsPath}")
     } catch (Exception e) {
       println("DEBUG: pluginManagement failed to include expo gradle plugin build: ${e.toString()}")
     }
+  } else if (expoPluginsPath != null) {
+    println("DEBUG: expo gradle plugin path does not exist; skipping pluginManagement includeBuild: ${expoPluginsPath}")
   }
 }
 
@@ -61,23 +63,34 @@ if (reactNativeGradlePlugin != null) {
   }
 }
 
-if (expoPluginsPath != null) {
+if (expoPluginsPath != null && new File(expoPluginsPath).exists()) {
   try {
     includeBuild(expoPluginsPath)
     println("DEBUG: included expo gradle plugin build: ${expoPluginsPath}")
   } catch (Exception e) {
     println("DEBUG: failed to include expo gradle plugin build: ${e.toString()}")
   }
+} else if (expoPluginsPath != null) {
+  println("DEBUG: expo gradle plugin path does not exist; skipping includeBuild: ${expoPluginsPath}")
 }
 
-// Apply the Expo autolinking settings plugin.
-// React Native 0.73 uses the RN Gradle plugin package without a separate
-// Removed legacy com.facebook.react.settings reference
+// Apply the Expo autolinking settings plugin only if the expo gradle plugin
+// folder is present. When the postinstall shim disables that folder (to
+// avoid compiling the Kotlin plugin on the builder), skip applying the
+// plugin so Gradle won't try to resolve a non-existent included build.
 try {
-  pluginManager.apply("expo-autolinking-settings")
-  println("DEBUG: applied expo-autolinking-settings")
+  if (expoPluginsPath != null && new File(expoPluginsPath).exists()) {
+    try {
+      pluginManager.apply("expo-autolinking-settings")
+      println("DEBUG: applied expo-autolinking-settings")
+    } catch (Exception e) {
+      println("DEBUG: could not apply expo-autolinking-settings: ${e.toString()}")
+    }
+  } else {
+    println("DEBUG: skipping apply of expo-autolinking-settings; expo plugin folder missing: ${expoPluginsPath}")
+  }
 } catch (Exception e) {
-  println("DEBUG: could not apply expo-autolinking-settings: ${e.toString()}")
+  println("DEBUG: error while deciding to apply expo-autolinking-settings: ${e.toString()}")
 }
 
 try {
