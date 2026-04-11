@@ -40,24 +40,65 @@ try {
   process.exit(1);
 }
 
+// Disable expo's gradle plugin build inside node_modules to avoid compiling
+// the Kotlin plugin on the builder (which can fail due to internal Gradle APIs).
 try {
-  const settingsPath = path.join(__dirname, '..', 'android', 'settings.gradle');
-  if (fs.existsSync(settingsPath)) {
-    const settingsText = fs.readFileSync(settingsPath, 'utf8');
-    const updatedSettingsText = settingsText.replace(
-      /\s*pluginManager\.apply\(['\"]com\.facebook\.react\.settings['\"]\)\s*\r?\n/g,
-      '// Removed unsupported com.facebook.react.settings apply for RN 0.73\n'
-    );
-    if (updatedSettingsText !== settingsText) {
-      fs.writeFileSync(settingsPath, updatedSettingsText, 'utf8');
-      console.log('Patched android/settings.gradle to remove unsupported com.facebook.react.settings apply');
-    } else {
-      console.log('android/settings.gradle does not contain unsupported com.facebook.react.settings apply');
+  const expoPluginDir = path.join(__dirname, '..', 'node_modules', 'expo-modules-autolinking', 'android', 'expo-gradle-plugin');
+  if (fs.existsSync(expoPluginDir)) {
+    const disabledPath = expoPluginDir + '.disabled_by_shim';
+    try {
+      fs.renameSync(expoPluginDir, disabledPath);
+      console.log('Renamed expo gradle plugin directory to', disabledPath);
+    } catch (err) {
+      // If rename fails (e.g., on some filesystems), try removing it.
+      try {
+        fs.rmSync(expoPluginDir, { recursive: true, force: true });
+        console.log('Removed expo gradle plugin directory at', expoPluginDir);
+      } catch (rmErr) {
+        console.error('Failed to disable expo gradle plugin directory:', rmErr);
+        // Don't fatal here; proceed so we can still attempt the settings patch.
+      }
     }
   } else {
-    console.log('No android/settings.gradle file found at', settingsPath);
+    console.log('No expo gradle plugin directory found at', expoPluginDir);
   }
 } catch (error) {
-  console.error('Failed to patch android/settings.gradle:', error);
+  console.error('Failed while disabling expo gradle plugin directory:', error);
+}
+
+try {
+  const androidDir = path.join(__dirname, '..', 'android');
+  const candidates = [
+    path.join(androidDir, 'settings.gradle'),
+    path.join(androidDir, 'settings.gradle.kts')
+  ];
+
+  let patchedAny = false;
+  for (const settingsPath of candidates) {
+    if (!fs.existsSync(settingsPath)) {
+      continue;
+    }
+
+    const settingsText = fs.readFileSync(settingsPath, 'utf8');
+
+    // Remove any line that references the legacy settings plugin id in any form
+    const cleaned = settingsText.replace(/.*com\.facebook\.react\.settings.*(?:\r?\n)?/g, function (m) {
+      patchedAny = true;
+      return '// Removed legacy com.facebook.react.settings reference\n';
+    });
+
+    if (cleaned !== settingsText) {
+      fs.writeFileSync(settingsPath, cleaned, 'utf8');
+      console.log('Patched', settingsPath, 'to remove com.facebook.react.settings references');
+    } else {
+      console.log('No legacy com.facebook.react.settings references found in', settingsPath);
+    }
+  }
+
+  if (!patchedAny) {
+    console.log('No android settings files found to patch');
+  }
+} catch (error) {
+  console.error('Failed to patch android settings files:', error);
   process.exit(1);
 }
