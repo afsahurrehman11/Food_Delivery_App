@@ -309,11 +309,11 @@ try {
       ],
       [
         /^(\s*)classpath\s*\(\s*(['"])com\.facebook\.react:react-native-gradle-plugin\2\s*\)\s*$/gm,
-        "$1// react-native-gradle-plugin is resolved via includeBuild in settings.gradle"
+        "$1classpath('com.facebook.react:react-native-gradle-plugin:0.73.4')"
       ],
       [
         /^(\s*)classpath\s+(['"])com\.facebook\.react:react-native-gradle-plugin\2\s*$/gm,
-        "$1// react-native-gradle-plugin is resolved via includeBuild in settings.gradle"
+        "$1classpath 'com.facebook.react:react-native-gradle-plugin:0.73.4'"
       ]
     ];
 
