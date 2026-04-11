@@ -5,7 +5,8 @@
   "build": {
     "production": {
       "env": {
-        "EXPO_USE_COMMUNITY_AUTOLINKING": "1"
+        "EXPO_USE_COMMUNITY_AUTOLINKING": "1",
+        "EXPO_SKIP_AUTOLINKING_INCLUDES": "1"
       },
       "android": {
         "image": "sdk-55",
