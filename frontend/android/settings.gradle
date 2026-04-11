@@ -84,12 +84,31 @@ if (System.getenv('EXPO_SKIP_AUTOLINKING_INCLUDES') != '1' && expoPluginsPath !=
 println("DEBUG: expo-autolinking-settings application disabled by settings.gradle (noop)")
 
 try {
-  extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
-    if (System.getenv('EXPO_USE_COMMUNITY_AUTOLINKING') == '1') {
-      ex.autolinkLibrariesFromCommand()
-    } else {
-      ex.autolinkLibrariesFromCommand(expoAutolinking.rnConfigCommand)
+  def reactSettingsClass = null
+  try {
+    reactSettingsClass = Class.forName('com.facebook.react.ReactSettingsExtension')
+  } catch (ClassNotFoundException ignored) {
+    reactSettingsClass = null
+  }
+
+  if (reactSettingsClass != null) {
+    extensions.configure(reactSettingsClass) { ex ->
+      if (System.getenv('EXPO_USE_COMMUNITY_AUTOLINKING') == '1') {
+        ex.autolinkLibrariesFromCommand()
+      } else {
+        try {
+          if (this.extensions.findByName('expoAutolinking') != null && expoAutolinking?.rnConfigCommand) {
+            ex.autolinkLibrariesFromCommand(expoAutolinking.rnConfigCommand)
+          } else {
+            ex.autolinkLibrariesFromCommand()
+          }
+        } catch (Exception inner) {
+          println("DEBUG: autolinkLibrariesFromCommand failed: ${inner.toString()}")
+        }
+      }
     }
+  } else {
+    println("DEBUG: ReactSettingsExtension class not found; skipping configure")
   }
 } catch (Exception e) {
   println("DEBUG: ReactSettingsExtension not available: ${e.toString()}")
