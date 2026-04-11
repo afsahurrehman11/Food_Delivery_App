@@ -93,6 +93,33 @@ function rewriteExpoAutolinkingReferences(settingsText) {
     }
   }
 
+  // Ensure a top-level includeBuild for @react-native/gradle-plugin exists so
+  // `classpath('com.facebook.react:react-native-gradle-plugin')` can be
+  // resolved via included build substitution even when expoAutolinking is
+  // unavailable.
+  const rnIncludeConditionalRegex = /if \(extensions\.findByName\('expoAutolinking'\)\?\.reactNativeGradlePlugin != null\) \{\r?\n\s*includeBuild\(extensions\.findByName\('expoAutolinking'\)\?\.reactNativeGradlePlugin\)\r?\n\}/;
+  if (rnIncludeConditionalRegex.test(text) && !text.includes('def __rnIncludedBuildPath = null')) {
+    const rnIncludeReplacement = [
+      'def __rnIncludedBuildPath = null',
+      'try {',
+      '  __rnIncludedBuildPath = new File(',
+      '    providers.exec {',
+      '      workingDir(rootDir)',
+      '      commandLine("node", "--print", "require.resolve(\'@react-native/gradle-plugin/package.json\', { paths: [require.resolve(\'react-native/package.json\')] })")',
+      '    }.standardOutput.asText.get().trim()',
+      '  ).getParentFile().absolutePath',
+      '} catch (Exception e) {',
+      '  __rnIncludedBuildPath = null',
+      '}',
+      'if (__rnIncludedBuildPath != null) {',
+      '  includeBuild(__rnIncludedBuildPath)',
+      '}'
+    ].join('\n');
+
+    text = text.replace(rnIncludeConditionalRegex, rnIncludeReplacement);
+    changed = true;
+  }
+
   return {
     text,
     changed
@@ -309,11 +336,19 @@ try {
       ],
       [
         /^(\s*)classpath\s*\(\s*(['"])com\.facebook\.react:react-native-gradle-plugin\2\s*\)\s*$/gm,
-        "$1classpath('com.facebook.react:react-native-gradle-plugin:0.73.4')"
+        "$1classpath('com.facebook.react:react-native-gradle-plugin')"
       ],
       [
         /^(\s*)classpath\s+(['"])com\.facebook\.react:react-native-gradle-plugin\2\s*$/gm,
-        "$1classpath 'com.facebook.react:react-native-gradle-plugin:0.73.4'"
+        "$1classpath('com.facebook.react:react-native-gradle-plugin')"
+      ],
+      [
+        /^(\s*)classpath\s*\(\s*(['"])com\.facebook\.react:react-native-gradle-plugin:[^'"]+\2\s*\)\s*$/gm,
+        "$1classpath('com.facebook.react:react-native-gradle-plugin')"
+      ],
+      [
+        /^(\s*)\/\/ react-native-gradle-plugin is resolved from @react-native\/gradle-plugin includeBuild\s*$/gm,
+        "$1classpath('com.facebook.react:react-native-gradle-plugin')"
       ]
     ];
 
@@ -328,6 +363,87 @@ try {
     if (buildGradleChanged) {
       fs.writeFileSync(buildGradlePath, patchedBuildGradle, 'utf8');
       console.log('Patched', buildGradlePath, 'to add explicit classpath versions');
+      patchedAny = true;
+    }
+  }
+
+  const appBuildGradlePath = path.join(androidDir, 'app', 'build.gradle');
+  if (fs.existsSync(appBuildGradlePath)) {
+    const appBuildGradleText = fs.readFileSync(appBuildGradlePath, 'utf8');
+    let patchedAppBuildGradle = appBuildGradleText;
+    let appBuildGradleChanged = false;
+
+    const pluginsBlockToApplyRegex = /plugins \{\r?\n\s*id "com\.facebook\.react"\r?\n\}\r?\n\r?\napply plugin: "com\.android\.application"\r?\napply plugin: "org\.jetbrains\.kotlin\.android"/;
+    const pluginsBlockToApplyReplacement = [
+      'apply plugin: "com.android.application"',
+      'apply plugin: "org.jetbrains.kotlin.android"',
+      'apply plugin: "com.facebook.react"'
+    ].join('\n');
+
+    if (pluginsBlockToApplyRegex.test(patchedAppBuildGradle)) {
+      patchedAppBuildGradle = patchedAppBuildGradle.replace(pluginsBlockToApplyRegex, pluginsBlockToApplyReplacement);
+      appBuildGradleChanged = true;
+    }
+
+    const appReplacements = [
+      [
+        "    hermesCommand = new File([\"node\", \"--print\", \"require.resolve('hermes-compiler/package.json', { paths: [require.resolve('react-native/package.json')] })\"].execute(null, rootDir).text.trim()).getParentFile().getAbsolutePath() + \"/hermesc/%OS-BIN%/hermesc\"",
+        [
+          '    try {',
+          '        def hermesPackagePath = ["node", "--print", "require.resolve(\'hermes-compiler/package.json\', { paths: [require.resolve(\'react-native/package.json\')] })"].execute(null, rootDir).text.trim()',
+          '        if (hermesPackagePath != null && hermesPackagePath.length() > 0 && hermesPackagePath != "undefined") {',
+          '            hermesCommand = new File(hermesPackagePath).getParentFile().getAbsolutePath() + "/hermesc/%OS-BIN%/hermesc"',
+          '        }',
+          '    } catch (Exception e) {',
+          '        println("DEBUG: could not resolve hermes-compiler package; keeping default hermesCommand")',
+          '    }'
+        ].join('\n')
+      ],
+      [
+        "    enableBundleCompression = (findProperty('android.enableBundleCompression') ?: false).toBoolean()",
+        "    // enableBundleCompression is unsupported in older React Native Gradle plugin versions"
+      ],
+      [
+        "    autolinkLibrariesWithApp()",
+        "    // autolinkLibrariesWithApp() is unavailable in older React Native Gradle plugin versions"
+      ],
+      [
+        /\$\{expoLibs\.versions\.fresco\.get\(\)\}/g,
+        '2.6.0'
+      ],
+      [
+        /ndkVersion\s+rootProject\.ext\.ndkVersion/g,
+        "ndkVersion (rootProject.ext.has('ndkVersion') ? rootProject.ext.ndkVersion : '26.1.10909125')"
+      ],
+      [
+        /buildToolsVersion\s+rootProject\.ext\.buildToolsVersion/g,
+        "buildToolsVersion (rootProject.ext.has('buildToolsVersion') ? rootProject.ext.buildToolsVersion : '34.0.0')"
+      ],
+      [
+        /compileSdk\s+rootProject\.ext\.compileSdkVersion/g,
+        "compileSdk (rootProject.ext.has('compileSdkVersion') ? rootProject.ext.compileSdkVersion : 34)"
+      ],
+      [
+        /minSdkVersion\s+rootProject\.ext\.minSdkVersion/g,
+        "minSdkVersion (rootProject.ext.has('minSdkVersion') ? rootProject.ext.minSdkVersion : 24)"
+      ],
+      [
+        /targetSdkVersion\s+rootProject\.ext\.targetSdkVersion/g,
+        "targetSdkVersion (rootProject.ext.has('targetSdkVersion') ? rootProject.ext.targetSdkVersion : 34)"
+      ]
+    ];
+
+    for (const [pattern, replacement] of appReplacements) {
+      const next = patchedAppBuildGradle.replace(pattern, replacement);
+      if (next !== patchedAppBuildGradle) {
+        patchedAppBuildGradle = next;
+        appBuildGradleChanged = true;
+      }
+    }
+
+    if (appBuildGradleChanged) {
+      fs.writeFileSync(appBuildGradlePath, patchedAppBuildGradle, 'utf8');
+      console.log('Patched', appBuildGradlePath, 'to harden plugin and SDK configuration');
       patchedAny = true;
     }
   }
