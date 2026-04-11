@@ -65,6 +65,17 @@ function rewriteExpoAutolinkingReferences(settingsText) {
     changed = true;
   }
 
+  // Guard includeBuild calls so Gradle never receives a null path.
+  const includeBuildRegex = /(^\s*)includeBuild\(\s*expoAutolinking(?:\?\.|\.)reactNativeGradlePlugin\s*\)\s*$/gm;
+  const guardedIncludeBuild = text.replace(
+    includeBuildRegex,
+    "$1if (extensions.findByName('expoAutolinking')?.reactNativeGradlePlugin != null) {\n$1  includeBuild(extensions.findByName('expoAutolinking')?.reactNativeGradlePlugin)\n$1}"
+  );
+  if (guardedIncludeBuild !== text) {
+    text = guardedIncludeBuild;
+    changed = true;
+  }
+
   const replacements = [
     ['extensions.findByName("expoAutolinking")', "extensions.findByName('expoAutolinking')"],
     ["__expoAutolinkingExt?.", "extensions.findByName('expoAutolinking')?."],
