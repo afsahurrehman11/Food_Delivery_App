@@ -275,6 +275,54 @@ try {
   if (!patchedAny) {
     console.log('No android settings files found to patch');
   }
+
+  const buildGradlePath = path.join(androidDir, 'build.gradle');
+  if (fs.existsSync(buildGradlePath)) {
+    const buildGradleText = fs.readFileSync(buildGradlePath, 'utf8');
+    let patchedBuildGradle = buildGradleText;
+    let buildGradleChanged = false;
+
+    const replacements = [
+      [
+        /classpath\s*\(\s*(['"])com\.android\.tools\.build:gradle\1\s*\)/g,
+        "classpath('com.android.tools.build:gradle:8.1.1')"
+      ],
+      [
+        /classpath\s+(['"])com\.android\.tools\.build:gradle\1/g,
+        "classpath 'com.android.tools.build:gradle:8.1.1'"
+      ],
+      [
+        /classpath\s*\(\s*(['"])org\.jetbrains\.kotlin:kotlin-gradle-plugin\1\s*\)/g,
+        "classpath('org.jetbrains.kotlin:kotlin-gradle-plugin:1.8.22')"
+      ],
+      [
+        /classpath\s+(['"])org\.jetbrains\.kotlin:kotlin-gradle-plugin\1/g,
+        "classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.8.22'"
+      ],
+      [
+        /^(\s*)classpath\s*\(\s*(['"])com\.facebook\.react:react-native-gradle-plugin\2\s*\)\s*$/gm,
+        "$1// react-native-gradle-plugin is resolved via includeBuild in settings.gradle"
+      ],
+      [
+        /^(\s*)classpath\s+(['"])com\.facebook\.react:react-native-gradle-plugin\2\s*$/gm,
+        "$1// react-native-gradle-plugin is resolved via includeBuild in settings.gradle"
+      ]
+    ];
+
+    for (const [pattern, replacement] of replacements) {
+      const next = patchedBuildGradle.replace(pattern, replacement);
+      if (next !== patchedBuildGradle) {
+        patchedBuildGradle = next;
+        buildGradleChanged = true;
+      }
+    }
+
+    if (buildGradleChanged) {
+      fs.writeFileSync(buildGradlePath, patchedBuildGradle, 'utf8');
+      console.log('Patched', buildGradlePath, 'to add explicit classpath versions');
+      patchedAny = true;
+    }
+  }
 } catch (error) {
   console.error('Failed to patch android settings files:', error);
   process.exit(1);
