@@ -53,6 +53,40 @@ function replaceLegacyReactSettingsBlock(settingsText) {
   };
 }
 
+function rewriteExpoAutolinkingReferences(settingsText) {
+  let text = settingsText;
+  let changed = false;
+
+  if (text.includes('expoAutolinking?.')) {
+    text = text.replace(/expoAutolinking\?\./g, '__expoAutolinkingExt?.');
+    changed = true;
+  }
+
+  if (text.includes('expoAutolinking.')) {
+    text = text.replace(/expoAutolinking\./g, '__expoAutolinkingExt?.');
+    changed = true;
+  }
+
+  if (changed && !text.includes('def __expoAutolinkingExt = null')) {
+    const helperBlock = [
+      'def __expoAutolinkingExt = null',
+      'try {',
+      '  __expoAutolinkingExt = extensions.findByName("expoAutolinking")',
+      '} catch (Exception ignored) {',
+      '  __expoAutolinkingExt = null',
+      '}',
+      ''
+    ].join('\n');
+
+    text = helperBlock + text;
+  }
+
+  return {
+    text,
+    changed
+  };
+}
+
 try {
   if (!fs.existsSync(shimDir)) {
     fs.mkdirSync(shimDir, { recursive: true });
@@ -209,6 +243,13 @@ try {
       cleaned = reactSettingsPatch.text;
       patchedAny = true;
       console.log('Patched', settingsPath, 'to replace legacy ReactSettingsExtension block');
+    }
+
+    const expoRefsPatch = rewriteExpoAutolinkingReferences(cleaned);
+    if (expoRefsPatch.changed) {
+      cleaned = expoRefsPatch.text;
+      patchedAny = true;
+      console.log('Patched', settingsPath, 'to rewrite expoAutolinking references safely');
     }
 
     if (cleaned !== settingsText) {
