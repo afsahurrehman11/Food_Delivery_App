@@ -6,6 +6,53 @@ const shimDir = path.dirname(shimPath);
 const wrapperPath = path.join(__dirname, '..', 'android', 'gradle', 'wrapper', 'gradle-wrapper.properties');
 const desiredWrapperUrl = 'https://services.gradle.org/distributions/gradle-8.4-bin.zip';
 
+function replaceLegacyReactSettingsBlock(settingsText) {
+  const lines = settingsText.split(/\r?\n/);
+  const out = [];
+  let replaced = false;
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i];
+
+    if (!replaced && line.includes('extensions.configure(com.facebook.react.ReactSettingsExtension)')) {
+      replaced = true;
+
+      let depth = (line.match(/\{/g) || []).length - (line.match(/\}/g) || []).length;
+      while (i + 1 < lines.length && depth > 0) {
+        i += 1;
+        const blockLine = lines[i];
+        depth += (blockLine.match(/\{/g) || []).length - (blockLine.match(/\}/g) || []).length;
+      }
+
+      out.push(
+        'try {',
+        "  def reactSettingsClass = Class.forName('com.facebook.react.ReactSettingsExtension')",
+        '  extensions.configure(reactSettingsClass) { ex ->',
+        "    if (System.getenv('EXPO_USE_COMMUNITY_AUTOLINKING') == '1') {",
+        '      ex.autolinkLibrariesFromCommand()',
+        '    } else if (extensions.findByName("expoAutolinking") != null && expoAutolinking?.rnConfigCommand != null) {',
+        '      ex.autolinkLibrariesFromCommand(expoAutolinking.rnConfigCommand)',
+        '    } else {',
+        '      ex.autolinkLibrariesFromCommand()',
+        '    }',
+        '  }',
+        '} catch (Exception e) {',
+        '  println("DEBUG: ReactSettingsExtension unavailable; skipping autolinking configuration: " + e.toString())',
+        '}'
+      );
+
+      continue;
+    }
+
+    out.push(line);
+  }
+
+  return {
+    text: out.join('\n'),
+    replaced
+  };
+}
+
 try {
   if (!fs.existsSync(shimDir)) {
     fs.mkdirSync(shimDir, { recursive: true });
@@ -147,12 +194,22 @@ try {
     }
 
     const settingsText = fs.readFileSync(settingsPath, 'utf8');
+    let cleaned = settingsText;
 
     // Remove any line that references the legacy settings plugin id in any form
-    const cleaned = settingsText.replace(/.*com\.facebook\.react\.settings.*(?:\r?\n)?/g, function (m) {
+    cleaned = cleaned.replace(/.*com\.facebook\.react\.settings.*(?:\r?\n)?/g, function (m) {
       patchedAny = true;
       return '// Removed legacy com.facebook.react.settings reference\n';
     });
+
+    // Replace legacy ReactSettingsExtension block that references `com.` directly,
+    // which can fail during settings evaluation when the class isn't yet available.
+    const reactSettingsPatch = replaceLegacyReactSettingsBlock(cleaned);
+    if (reactSettingsPatch.replaced) {
+      cleaned = reactSettingsPatch.text;
+      patchedAny = true;
+      console.log('Patched', settingsPath, 'to replace legacy ReactSettingsExtension block');
+    }
 
     if (cleaned !== settingsText) {
       fs.writeFileSync(settingsPath, cleaned, 'utf8');
