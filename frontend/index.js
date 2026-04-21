@@ -1,4 +1,8 @@
 import { registerRootComponent } from 'expo';
-import App from './App';
+import { Platform } from 'react-native';
+import App from './src/App';
+import AppWeb from './src/AppWeb';
 
-registerRootComponent(App);
+const RootComponent = Platform.OS === 'web' ? AppWeb : App;
+
+registerRootComponent(RootComponent);

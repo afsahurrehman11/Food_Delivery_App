@@ -1,0 +1,14 @@
+# Keep Android source files in the upload, but exclude generated/build-only artifacts.
+node_modules/
+.expo/
+.git/
+.vscode/
+
+android/.gradle/
+android/build/
+android/app/.cxx/
+
+*.log
+assemble-*.log
+compile-kotlin-*.log
+{
