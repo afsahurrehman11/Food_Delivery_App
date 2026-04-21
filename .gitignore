@@ -1,0 +1,23 @@
+# Ignore Python bytecode and caches
+__pycache__/
+*.py[cod]
+*.pyc
+
+# Virtual environments
+venv/
+.venv/
+backend/venv/
+env/
+ENV/
+
+# Environment and secret files
+.env
+
+# Editor directories
+.vscode/
+.idea/
+
+# Build/artifacts
+build/
+dist/
+*.egg-info/
